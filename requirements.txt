@@ -3,4 +3,6 @@ uvicorn
 pydub
 python-multipart
 demucs
-PyTorch
+torch
+torchaudio
+numpy
