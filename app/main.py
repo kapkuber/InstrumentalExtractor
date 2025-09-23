@@ -4,6 +4,7 @@ import subprocess
 import uuid
 from fastapi import FastAPI, UploadFile, File, Form, BackgroundTasks
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from app.demucs_service import separate_instrumental
 
 app = FastAPI()
@@ -13,10 +14,31 @@ UPLOAD_DIR = "uploads"
 OUTPUT_DIR = "outputs"
 YTDLP_PATH = r"C:\\Users\\Kuber Kapuriya\\Downloads\\yt-dlp.exe"
 
+# Optional React build directory (for production serving)
+DIST_DIR = os.path.join("client", "dist")
+DIST_EXISTS = os.path.isdir(DIST_DIR)
+
 # Ensure directories exist
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
+"""CORS for React dev server"""
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+"""Serve React build in production if present; otherwise fall back to static/index.html"""
+if DIST_EXISTS:
+    from fastapi.staticfiles import StaticFiles
+
+    app.mount("/", StaticFiles(directory=DIST_DIR, html=True), name="static")
 
 # === Cleanup function ===
 def cleanup_files():
@@ -34,14 +56,6 @@ def cleanup_files():
 
 
 # === Routes ===
-@app.get("/")
-async def read_root():
-    index_path = os.path.join("static", "index.html")
-    if os.path.exists(index_path):
-        with open(index_path, "r", encoding="utf-8") as f:
-            html_content = f.read()
-        return HTMLResponse(content=html_content, status_code=200)
-    return {"message": "index.html not found"}
 
 
 @app.post("/extract-instrumental/")
