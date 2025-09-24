@@ -131,7 +131,7 @@ export default function App() {
         </Sidebar>
       </div>
 
-      <main className="content">
+      <main className={`content ${view}`}>
         {view === 'extractor' ? (
         <section className="hero">
           <h1>Instrumental Extractor</h1>
