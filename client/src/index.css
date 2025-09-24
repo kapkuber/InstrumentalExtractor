@@ -25,17 +25,54 @@ body {
   min-height: 100vh;
 }
 
-.sidebar {
+/* Flowbite Sidebar wrapper that matches theme */
+.fb-sidebar {
   width: 240px;
   background: var(--panel);
   border-right: 1px solid var(--border);
-  padding: 16px;
+  padding: 0;
   display: flex;
-  flex-direction: column;
-  gap: 16px;
+  min-height: 100vh;
+}
+.fb-sidebar [data-testid="flowbite-sidebar"] {
+  background: var(--panel) !important;
+  color: var(--text) !important;
+  width: 100%;
+  border-right: 1px solid var(--border) !important;
+  padding: 0 !important;
+}
+/* Kill Flowbite's inner white card, borders and rounded corners */
+.fb-sidebar [data-testid="flowbite-sidebar"] > div {
+  background: transparent !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+.fb-sidebar [data-testid="flowbite-sidebar"] .rounded,
+.fb-sidebar [data-testid="flowbite-sidebar"] .rounded-lg,
+.fb-sidebar [data-testid="flowbite-sidebar"] .border,
+.fb-sidebar [data-testid="flowbite-sidebar"] .bg-white,
+.fb-sidebar [data-testid="flowbite-sidebar"] .bg-gray-50,
+.fb-sidebar [data-testid="flowbite-sidebar"] .dark\:bg-gray-800 {
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+.fb-sidebar [data-testid="flowbite-sidebar"] a,
+.fb-sidebar [data-testid="flowbite-sidebar"] span {
+  color: var(--text) !important;
+  opacity: 1 !important;
+}
+.fb-sidebar [data-testid="flowbite-sidebar"] svg {
+  color: var(--text) !important;
+}
+.fb-sidebar [data-testid="flowbite-sidebar"] a:hover {
+  background: var(--panel-2) !important;
 }
 .brand {
   font-weight: 700;
+  font-size: 20px;
   color: #9db4ff;
   letter-spacing: 0.2px;
 }
@@ -144,6 +181,43 @@ body {
   padding: 12px 20px;
   border-radius: 999px;
 }
+
+/* Drag & Drop zone */
+.dropzone {
+  margin: 10px auto 0;
+  width: min(520px, 92vw);
+  min-height: 240px;
+  background: var(--panel);
+  border: 1px dashed rgba(255,255,255,0.35);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  cursor: pointer;
+  transition: all .2s ease;
+}
+.dropzone.highlight {
+  background: var(--panel-2);
+  border-color: #ffffffbb;
+  box-shadow: 0 0 0 3px #3b82f655 inset;
+}
+.dz-title { font-weight: 600; color: #fff; margin-top: 6px; }
+.dz-or { color: rgba(255,255,255,0.75); font-size: 13px; }
+.dz-filename { color: var(--muted); margin-top: 8px; font-size: 13px; }
+
+/* Simple button for Browse File */
+.btn {
+  background: var(--panel-2);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 10px 16px;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.btn:hover { border-color: var(--accent-2); }
+.browse-btn { min-width: 140px; }
 
 .yt-box input {
   width: 100%;

@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type DragEvent } from 'react'
 import { extractFromFile, extractFromYoutube } from './api'
 import StarBorder from './components/StarBorder'
+import { CloudUpload } from 'lucide-react'
+import { Sidebar, SidebarItem, SidebarItemGroup, SidebarItems } from 'flowbite-react'
+import { HiViewBoards, HiInbox } from 'react-icons/hi'
 
 type HistoryItem = { name: string; size: number; date: string }
 
@@ -23,6 +26,7 @@ export default function App() {
   })
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [dragging, setDragging] = useState(false)
 
   useEffect(() => {
     localStorage.setItem('ie:history', JSON.stringify(history))
@@ -31,6 +35,19 @@ export default function App() {
   const canSubmit = useMemo(() => (mode === 'file' ? !!file : !!yt.trim()), [mode, file, yt])
 
   const handleChoose = () => fileInputRef.current?.click()
+
+  const onDrop = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); e.stopPropagation();
+    setDragging(false)
+    const files = e.dataTransfer?.files
+    if (files && files.length > 0) {
+      setFile(files[0])
+      e.dataTransfer.clearData()
+    }
+  }
+  const onDragOver = (e: DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); if (!dragging) setDragging(true) }
+  const onDragEnter = (e: DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); setDragging(true) }
+  const onDragLeave = (e: DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); setDragging(false) }
 
   const go = async () => {
     try {
@@ -53,25 +70,16 @@ export default function App() {
 
   return (
     <div className="app">
-      <aside className="sidebar">
-        <div className="brand">Instrumental Extractor</div>
-
-        <div className="files">
-          <div className="files-title">My Files</div>
-          {history.length === 0 ? (
-            <div className="files-empty">No uploads yet</div>
-          ) : (
-            <ul className="files-list">
-              {history.map((h, i) => (
-                <li key={i} title={new Date(h.date).toLocaleString()}>
-                  <span className="file-name">{h.name}</span>
-                  <span className="file-size">{(h.size/1024/1024).toFixed(1)} MB</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      </aside>
+      <div className="fb-sidebar">
+        <Sidebar aria-label="App sidebar" data-testid="flowbite-sidebar">
+          <SidebarItems>
+            <SidebarItemGroup>
+              <SidebarItem href="#" icon={HiViewBoards}>Extractor</SidebarItem>
+              <SidebarItem href="#" icon={HiInbox}>Files</SidebarItem>
+            </SidebarItemGroup>
+          </SidebarItems>
+        </Sidebar>
+      </div>
 
       <main className="content">
         <section className="hero">
@@ -85,11 +93,29 @@ export default function App() {
 
           {mode === 'file' ? (
             <div className="uploader">
-              <input ref={fileInputRef} type="file" accept=".mp3,.wav,.m4a,.flac" onChange={(e) => setFile(e.target.files?.[0] ?? null)} hidden />
-              <StarBorder as="button" className="primary" onClick={handleChoose} color="#3b82f6" speed="6s">
-                Browse my files
-              </StarBorder>
-              {file && <div className="file-picked">Selected: {file.name}</div>}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".mp3,.wav,.m4a,.flac"
+                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                hidden
+              />
+              <div
+                className={`dropzone ${dragging ? 'highlight' : ''}`}
+                onDrop={onDrop}
+                onDragOver={onDragOver}
+                onDragEnter={onDragEnter}
+                onDragLeave={onDragLeave}
+                onClick={handleChoose}
+                role="button"
+                tabIndex={0}
+              >
+                <CloudUpload size={48} color="#ffffff" />
+                <div className="dz-title">Drag & Drop to Upload File</div>
+                <div className="dz-or">OR</div>
+                <button type="button" className="btn browse-btn" onClick={handleChoose}>Browse File</button>
+                {file && <div className="dz-filename">Selected: {file.name}</div>}
+              </div>
             </div>
           ) : (
             <div className="yt-box">
@@ -103,7 +129,7 @@ export default function App() {
           )}
 
           <div className="actions">
-            <StarBorder as="button" onClick={go} className="cta" color="#6c63ff" speed="7s">
+            <StarBorder as="button" onClick={go} className="cta" color="#6c63ff" speed="8s">
               {loading ? 'Working...' : 'Extract Instrumental'}
             </StarBorder>
             <div className="status">{status}</div>
