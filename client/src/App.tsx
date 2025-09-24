@@ -51,14 +51,6 @@ async function dbDel(id: string) {
   })
 }
 
-function downloadBlob(blob: Blob, filename: string) {
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url; a.download = filename
-  document.body.appendChild(a); a.click(); a.remove()
-  URL.revokeObjectURL(url)
-}
-
 export default function App() {
   const [mode, setMode] = useState<'file' | 'youtube'>('file')
   const [view, setView] = useState<'extractor' | 'files'>('extractor')
@@ -95,14 +87,14 @@ export default function App() {
   const onDragLeave = (e: DragEvent<HTMLDivElement>) => { e.preventDefault(); e.stopPropagation(); setDragging(false) }
 
   const go = async () => {
+    if (loading || !canSubmit) return
     try {
       setLoading(true)
       setStatus('Processing...')
       const blob = mode === 'file'
         ? await extractFromFile(file as File)
         : await extractFromYoutube(yt.trim())
-      downloadBlob(blob, 'instrumental.wav')
-      setStatus('Instrumental downloaded!')
+      setStatus('Instrumental ready in Files tab!')
       const id = crypto.randomUUID()
       await dbPut(id, blob)
       const displayName = file?.name || 'instrumental.wav'
@@ -180,10 +172,12 @@ export default function App() {
           )}
 
           <div className="actions">
-            <StarBorder as="button" onClick={go} className="cta" color="#6c63ff" speed="8s">
+            <StarBorder as="button" onClick={go} className="cta" color="#6c63ff" speed="8s" disabled={!canSubmit || loading} aria-busy={loading}>
               {loading ? 'Working...' : 'Extract Instrumental'}
             </StarBorder>
-            <div className="status">{status}</div>
+            <div className="status" aria-live="polite">
+              {loading ? <span className="status-spinner" role="status" aria-label="Processing" /> : status}
+            </div>
           </div>
         </section>
         ) : (
