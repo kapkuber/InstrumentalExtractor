@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "gsap": "^3.13.0",
+    "lucide-react": "^0.544.0"
+  }
+}

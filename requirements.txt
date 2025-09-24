@@ -6,3 +6,4 @@ demucs
 torch
 torchaudio
 numpy
+lucide-react
