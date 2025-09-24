@@ -172,7 +172,7 @@ export default function App() {
           )}
 
           <div className="actions">
-            <StarBorder as="button" onClick={go} className="cta" color="#6c63ff" speed="8s" disabled={!canSubmit || loading} aria-busy={loading}>
+            <StarBorder as="button" onClick={go} className="cta" color="#6c63ff" speed="8s" aria-busy={loading}>
               {loading ? 'Working...' : 'Extract Instrumental'}
             </StarBorder>
             <div className="status" aria-live="polite">
