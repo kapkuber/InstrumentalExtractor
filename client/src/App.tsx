@@ -4,8 +4,52 @@ import StarBorder from './components/StarBorder'
 import { CloudUpload } from 'lucide-react'
 import { Sidebar, SidebarItem, SidebarItemGroup, SidebarItems } from 'flowbite-react'
 import { HiViewBoards, HiInbox } from 'react-icons/hi'
+import { Pencil, Download as DlIcon, Play, Pause, Trash2 } from 'lucide-react'
 
-type HistoryItem = { name: string; size: number; date: string }
+// Persisted metadata for extracted files (blobs live in IndexedDB)
+type FileItem = { id: string; name: string; size: number; date: string; type: string }
+
+// Simple IndexedDB helpers
+const DB_NAME = 'ie-db'
+const STORE = 'extracted'
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1)
+    req.onupgradeneeded = () => {
+      const db = req.result
+      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE)
+    }
+    req.onsuccess = () => resolve(req.result)
+    req.onerror = () => reject(req.error)
+  })
+}
+async function dbPut(id: string, blob: Blob) {
+  const db = await openDB()
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite')
+    tx.objectStore(STORE).put(blob, id)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
+async function dbGet(id: string): Promise<Blob | undefined> {
+  const db = await openDB()
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readonly')
+    const req = tx.objectStore(STORE).get(id)
+    req.onsuccess = () => resolve(req.result as Blob | undefined)
+    req.onerror = () => reject(req.error)
+  })
+}
+async function dbDel(id: string) {
+  const db = await openDB()
+  return new Promise<void>((resolve, reject) => {
+    const tx = db.transaction(STORE, 'readwrite')
+    tx.objectStore(STORE).delete(id)
+    tx.oncomplete = () => resolve()
+    tx.onerror = () => reject(tx.error)
+  })
+}
 
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob)
@@ -17,20 +61,21 @@ function downloadBlob(blob: Blob, filename: string) {
 
 export default function App() {
   const [mode, setMode] = useState<'file' | 'youtube'>('file')
+  const [view, setView] = useState<'extractor' | 'files'>('extractor')
   const [file, setFile] = useState<File | null>(null)
   const [yt, setYt] = useState('')
   const [loading, setLoading] = useState(false)
   const [status, setStatus] = useState('')
-  const [history, setHistory] = useState<HistoryItem[]>(() => {
-    try { return JSON.parse(localStorage.getItem('ie:history') || '[]') } catch { return [] }
+  const [filesMeta, setFilesMeta] = useState<FileItem[]>(() => {
+    try { return JSON.parse(localStorage.getItem('ie:extracted') || '[]') } catch { return [] }
   })
 
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [dragging, setDragging] = useState(false)
 
   useEffect(() => {
-    localStorage.setItem('ie:history', JSON.stringify(history))
-  }, [history])
+    localStorage.setItem('ie:extracted', JSON.stringify(filesMeta))
+  }, [filesMeta])
 
   const canSubmit = useMemo(() => (mode === 'file' ? !!file : !!yt.trim()), [mode, file, yt])
 
@@ -58,9 +103,10 @@ export default function App() {
         : await extractFromYoutube(yt.trim())
       downloadBlob(blob, 'instrumental.wav')
       setStatus('Instrumental downloaded!')
-      if (mode === 'file' && file) {
-        setHistory(prev => [{ name: file.name, size: file.size, date: new Date().toISOString() }, ...prev].slice(0, 20))
-      }
+      const id = crypto.randomUUID()
+      await dbPut(id, blob)
+      const displayName = file?.name || 'instrumental.wav'
+      setFilesMeta(prev => [{ id, name: displayName, size: blob.size, date: new Date().toISOString(), type: blob.type || 'audio/wav' }, ...prev])
     } catch (e: any) {
       setStatus('Error: ' + (e?.message || String(e)))
     } finally {
@@ -74,14 +120,19 @@ export default function App() {
         <Sidebar aria-label="App sidebar" data-testid="flowbite-sidebar">
           <SidebarItems>
             <SidebarItemGroup>
-              <SidebarItem href="#" icon={HiViewBoards}>Extractor</SidebarItem>
-              <SidebarItem href="#" icon={HiInbox}>Files</SidebarItem>
+              <SidebarItem href="#" icon={HiViewBoards} className={view==='extractor' ? 'active-item' : ''} onClick={(e:any)=>{e.preventDefault(); setView('extractor')}}>
+                Extractor
+              </SidebarItem>
+              <SidebarItem href="#" icon={HiInbox} className={view==='files' ? 'active-item' : ''} onClick={(e:any)=>{e.preventDefault(); setView('files')}}>
+                Files
+              </SidebarItem>
             </SidebarItemGroup>
           </SidebarItems>
         </Sidebar>
       </div>
 
       <main className="content">
+        {view === 'extractor' ? (
         <section className="hero">
           <h1>Instrumental Extractor</h1>
           <p>Separate vocals from music with powerful AI algorithms.</p>
@@ -135,7 +186,70 @@ export default function App() {
             <div className="status">{status}</div>
           </div>
         </section>
+        ) : (
+        <section className="files-view">
+          <h2>Your Files</h2>
+          {filesMeta.length === 0 ? (
+            <div className="files-empty">No extracted files yet.</div>
+          ) : (
+            <ul className="files-list wide">
+              {filesMeta.map((f) => (
+                <li key={f.id} className="file-row">
+                  <div className="file-meta">
+                    <div className="file-name">{f.name}</div>
+                    <div className="file-sub">{(f.size/1024/1024).toFixed(2)} MB • {new Date(f.date).toLocaleString()}</div>
+                  </div>
+                  <div className="file-actions">
+                    <button className="icon-btn" title="Rename" onClick={() => {
+                      const name = prompt('Rename file', f.name) || f.name
+                      setFilesMeta(prev => prev.map(x => x.id===f.id ? { ...x, name } : x))
+                    }}><Pencil size={18} /></button>
+                    <button className="icon-btn" title="Download" onClick={async () => {
+                      const blob = await dbGet(f.id); if (!blob) return; const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=f.name; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url)
+                    }}><DlIcon size={18} /></button>
+                    <PlayPause fileId={f.id} />
+                    <button className="icon-btn danger" title="Delete" onClick={async () => {
+                      if (!confirm('Delete this file?')) return; await dbDel(f.id); setFilesMeta(prev => prev.filter(x=>x.id!==f.id))
+                    }}><Trash2 size={18} /></button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+        )}
       </main>
     </div>
+  )
+}
+
+function PlayPause({ fileId }: { fileId: string }) {
+  const [playing, setPlaying] = useState(false)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const urlRef = useRef<string | null>(null)
+
+  const toggle = async () => {
+    if (playing) {
+      audioRef.current?.pause(); setPlaying(false); return
+    }
+    if (!audioRef.current) audioRef.current = new Audio()
+    let url = urlRef.current
+    if (!url) {
+      const blob = await dbGet(fileId)
+      if (!blob) return
+      url = URL.createObjectURL(blob)
+      urlRef.current = url
+    }
+    audioRef.current.src = url!
+    await audioRef.current.play()
+    setPlaying(true)
+  }
+
+  useEffect(() => () => { if (urlRef.current) URL.revokeObjectURL(urlRef.current) }, [])
+
+  return (
+    <button className="icon-btn" title={playing ? 'Pause' : 'Play'} onClick={toggle}>
+      {playing ? <Pause size={18} /> : <Play size={18} />}
+    </button>
   )
 }

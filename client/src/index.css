@@ -27,7 +27,7 @@ body {
 
 /* Flowbite Sidebar wrapper that matches theme */
 .fb-sidebar {
-  width: 240px;
+  width: 200px;
   background: var(--panel);
   border-right: 1px solid var(--border);
   padding: 0;
@@ -70,6 +70,24 @@ body {
 .fb-sidebar [data-testid="flowbite-sidebar"] a:hover {
   background: var(--panel-2) !important;
 }
+
+/* Active item slight border */
+.fb-sidebar [data-testid="flowbite-sidebar"] .active-item {
+  border: 1px solid var(--border) !important;
+  background: var(--panel-2) !important;
+}
+
+/* Files view styles */
+.files-view { width: 100%; max-width: 900px; }
+.files-view h2 { margin: 0 0 12px 0; }
+.files-list.wide { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.file-row { display: flex; align-items: center; justify-content: space-between; background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
+.file-meta .file-name { font-weight: 600; }
+.file-meta .file-sub { color: var(--muted); font-size: 12px; }
+.file-actions { display: flex; gap: 8px; align-items: center; }
+.icon-btn { background: transparent; border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 6px; cursor: pointer; }
+.icon-btn:hover { border-color: var(--accent-2); }
+.icon-btn.danger:hover { border-color: #ef4444; color: #ef4444; }
 .brand {
   font-weight: 700;
   font-size: 20px;
